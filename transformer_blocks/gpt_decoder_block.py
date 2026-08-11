@@ -20,11 +20,13 @@ class GPTDecoderBlock(nn.Module):
         self.norm2 = nn.LayerNorm(embed_dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, mask=None, past_kv=None):
+    def forward(self, x, mask=None, past_kv=None, position_offset=0):
         residual = x
         x = self.norm1(x)
 
-        attn_out, _, new_kv = self.self_attention(x, mask=mask, past_kv=past_kv)
+        attn_out, _, new_kv = self.self_attention(
+            x, mask=mask, past_kv=past_kv, position_offset=position_offset
+        )
         x = residual + self.dropout(attn_out)
 
         residual = x

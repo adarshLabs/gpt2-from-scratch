@@ -44,7 +44,7 @@ class MultiHeadAttention(nn.Module):
         x = x.contiguous().view(B, S, self.embed_dim)
         return x
 
-    def forward(self, query, key=None, value=None, mask=None, past_kv=None):
+    def forward(self, query, key=None, value=None, mask=None, past_kv=None, position_offset=0):
         # query shape: (B, S_q, E)
         # key/value shapes: (B, S_k, E); default to query for self-attention.
         # mask shape: broadcastable to (B, H, S_q, S_k).
@@ -63,17 +63,13 @@ class MultiHeadAttention(nn.Module):
         K_split = self.split_head(K)
         V_split = self.split_head(V)
 
-        past_len = 0
-        if past_kv is not None:
-            K_cache, V_cache = past_kv
-            past_len = K_cache.shape[2]
-
         if self.qk_positional_encoding is not None:
             Q_split, K_split = self.qk_positional_encoding.apply_rotary(
-                Q_split, K_split, offset=past_len
+                Q_split, K_split, offset=position_offset
             )
 
         if past_kv is not None:
+            K_cache, V_cache = past_kv
             K_split = torch.cat([K_cache, K_split], dim=2)
             V_split = torch.cat([V_cache, V_split], dim=2)
 

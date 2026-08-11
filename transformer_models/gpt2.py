@@ -67,21 +67,30 @@ class GPT2(nn.Module):
         padding = padding_mask(input_ids, padding_token=self.config.padding_token)
         return combined_mask(causal, padding)
 
-    def _truncate_past_key_values(self, past_key_values):
+    def _truncate_past_key_values(self, past_key_values, new_tokens=1):
         if past_key_values is None:
             return None
+
+        max_past = self.config.block_size - new_tokens
 
         truncated = []
         for layer_past in past_key_values:
             key_cache, value_cache = layer_past
-            if key_cache.size(2) > self.config.block_size:
-                key_cache = key_cache[:, :, -self.config.block_size :, :]
-                value_cache = value_cache[:, :, -self.config.block_size :, :]
+            if key_cache.size(2) > max_past:
+                key_cache = key_cache[:, :, -max_past:, :]
+                value_cache = value_cache[:, :, -max_past:, :]
             truncated.append((key_cache, value_cache))
 
         return truncated
 
-    def forward(self, input_ids, target=None, past_key_values=None, use_cache=False):
+    def forward(
+        self,
+        input_ids,
+        target=None,
+        past_key_values=None,
+        use_cache=False,
+        position_offset=0,
+    ):
         embedding = self.token_embedding(input_ids)
         x = self.drop(embedding)
 
@@ -96,7 +105,9 @@ class GPT2(nn.Module):
         new_kv_values = []
         for i, block in enumerate(self.blocks):
             layer_past_kv = None if past_key_values is None else past_key_values[i]
-            x, new_key = block(x, mask=mask, past_kv=layer_past_kv)
+            x, new_key = block(
+                x, mask=mask, past_kv=layer_past_kv, position_offset=position_offset
+            )
 
             if use_cache:
                 new_kv_values.append(new_key)
@@ -125,19 +136,26 @@ class GPT2(nn.Module):
         self.eval()
         past_key_values = None
         context = input_ids[:, -self.config.block_size :]
+        position = 0
 
         for _ in range(max_new_tokens):
             if use_cache:
-                past_key_values = self._truncate_past_key_values(past_key_values)
+                past_key_values = self._truncate_past_key_values(
+                    past_key_values, new_tokens=context.shape[1]
+                )
                 step_input = context
+                position_offset = position
             else:
                 step_input = input_ids[:, -self.config.block_size :]
+                position_offset = 0
 
             logits, _, past_key_values = self(
                 step_input,
                 past_key_values=past_key_values,
                 use_cache=use_cache,
+                position_offset=position_offset,
             )
+            position += step_input.shape[1]
             logits = logits[:, -1, :] / temperature
 
             if top_k is not None:

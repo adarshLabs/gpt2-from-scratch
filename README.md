@@ -238,7 +238,7 @@ tensorboard --logdir runs
 | `--top_p` | Applies nucleus sampling over the smallest probability mass that reaches p. |
 | `--checkpoint` | Checkpoint filename under `checkpoint/<dataset>/`. |
 
-The model keeps only the most recent `block_size` tokens as context. With `use_cache=True` internally, generation reuses attention keys and values while preserving that sliding window.
+The model keeps only the most recent `block_size` tokens as context. With `use_cache=True` internally, generation reuses attention keys and values while preserving that sliding window: each key is rotated once with RoPE at its true absolute position and cached, so evicting old entries from the window never requires re-rotating anything that's still cached. Output matches the non-cached path exactly for the first `block_size` tokens, and diverges only slightly afterward, since the two paths define the sliding window differently once older tokens fall out of it (recomputed with a shared window boundary vs. cached with each token's own).
 
 ## Learning Guide
 
