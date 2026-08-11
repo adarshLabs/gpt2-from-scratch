@@ -68,38 +68,15 @@ class MultiHeadAttention(nn.Module):
                 Q_split, K_split, offset=position_offset
             )
 
-        if past_kv is None:
-            K_attn, V_attn = K_split, V_split
-            new_kv = (K_split, V_split)
-        else:
-            # past_kv is a preallocated (buffer_k, buffer_v, write_pos) ring
-            # buffer: new tokens are written in place at write_pos % capacity
-            # instead of growing a tensor via concatenation every step, so a
-            # step's cost stays O(new tokens) rather than O(cached tokens).
-            # Callers only ever write a full chunk starting at position 0
-            # (prefill) or exactly one token at the tail (decode), so a
-            # write never needs to split across the wrap boundary and a
-            # plain slice assignment suffices -- no index tensor needed.
-            buffer_k, buffer_v, write_pos = past_kv
-            capacity = buffer_k.shape[2]
-            S_new = K_split.shape[2]
-            pos = write_pos % capacity
-            buffer_k[:, :, pos : pos + S_new, :] = K_split
-            buffer_v[:, :, pos : pos + S_new, :] = V_split
+        if past_kv is not None:
+            K_cache, V_cache = past_kv
+            K_split = torch.cat([K_cache, K_split], dim=2)
+            V_split = torch.cat([V_cache, V_split], dim=2)
 
-            # Once the buffer wraps, entries are no longer in chronological
-            # order; that's only safe because callers pass mask=None here
-            # (unmasked decode attends to every cached token regardless of
-            # order). A mask-bearing call must supply a fresh, unwrapped
-            # buffer (write_pos == 0), as the prefill step does.
-            new_write_pos = write_pos + S_new
-            valid_len = min(new_write_pos, capacity)
-            K_attn = buffer_k[:, :, :valid_len, :]
-            V_attn = buffer_v[:, :, :valid_len, :]
-            new_kv = (buffer_k, buffer_v, new_write_pos)
+        new_kv = (K_split, V_split)
 
         # attn_output shape: (B, H, S_q, D), attn_weights shape: (B, H, S_q, S_k)
-        attn_output, attn_weights = self.attention(Q_split, K_attn, V_attn, mask)
+        attn_output, attn_weights = self.attention(Q_split, K_split, V_split, mask)
 
         concatenated_output = self.combine_heads(attn_output)
         output = self.out_proj(concatenated_output)
