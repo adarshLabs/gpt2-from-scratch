@@ -33,11 +33,7 @@ def main():
         device = torch.device("cpu")
 
     def sync():
-        # Kernel launches on cuda/mps are asynchronous, so a bare
-        # perf_counter() around them times how fast the CPU can issue work,
-        # not how long the device actually takes. Without this, the two
-        # generate() calls below -- which queue very different amounts of
-        # device work per step -- produce a misleading speedup ratio.
+
         if device.type == "cuda":
             torch.cuda.synchronize()
         elif device.type == "mps":
