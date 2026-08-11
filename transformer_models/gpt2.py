@@ -67,22 +67,6 @@ class GPT2(nn.Module):
         padding = padding_mask(input_ids, padding_token=self.config.padding_token)
         return combined_mask(causal, padding)
 
-    def _truncate_past_key_values(self, past_key_values, new_tokens=1):
-        if past_key_values is None:
-            return None
-
-        max_past = self.config.block_size - new_tokens
-
-        truncated = []
-        for layer_past in past_key_values:
-            key_cache, value_cache = layer_past
-            if key_cache.size(2) > max_past:
-                key_cache = key_cache[:, :, -max_past:, :]
-                value_cache = value_cache[:, :, -max_past:, :]
-            truncated.append((key_cache, value_cache))
-
-        return truncated
-
     def forward(
         self,
         input_ids,
@@ -94,13 +78,13 @@ class GPT2(nn.Module):
         embedding = self.token_embedding(input_ids)
         x = self.drop(embedding)
 
-        # During generation it has 2 stages : prefill and decode, isdecode=True means prefill=False and vice versa
-        isDecode = past_key_values is not None
-
-        if isDecode:
-            mask = None
-        else:
+        # A single new token attending to its (already causal-valid) cache
+        # never needs masking; only a multi-token forward -- prefill, or a
+        # full-context pass with no cache -- does.
+        if input_ids.shape[1] > 1:
             mask = self._build_mask(input_ids)
+        else:
+            mask = None
 
         new_kv_values = []
         for i, block in enumerate(self.blocks):
@@ -134,15 +118,27 @@ class GPT2(nn.Module):
         top_p=None,
     ):
         self.eval()
-        past_key_values = None
         context = input_ids[:, -self.config.block_size :]
         position = 0
 
+        if use_cache:
+            B = input_ids.shape[0]
+            head_dim = self.config.d_model // self.config.n_heads
+            buffer_shape = (B, self.config.n_heads, self.config.block_size, head_dim)
+            dtype = self.token_embedding.weight.dtype
+            past_key_values = [
+                (
+                    torch.zeros(buffer_shape, device=input_ids.device, dtype=dtype),
+                    torch.zeros(buffer_shape, device=input_ids.device, dtype=dtype),
+                    0,
+                )
+                for _ in range(self.config.n_layers)
+            ]
+        else:
+            past_key_values = None
+
         for _ in range(max_new_tokens):
             if use_cache:
-                past_key_values = self._truncate_past_key_values(
-                    past_key_values, new_tokens=context.shape[1]
-                )
                 step_input = context
                 position_offset = position
             else:
