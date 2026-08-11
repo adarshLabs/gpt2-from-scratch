@@ -32,6 +32,17 @@ def main():
     else:
         device = torch.device("cpu")
 
+    def sync():
+        # Kernel launches on cuda/mps are asynchronous, so a bare
+        # perf_counter() around them times how fast the CPU can issue work,
+        # not how long the device actually takes. Without this, the two
+        # generate() calls below -- which queue very different amounts of
+        # device work per step -- produce a misleading speedup ratio.
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+        elif device.type == "mps":
+            torch.mps.synchronize()
+
     ckpt_path = Path("checkpoint") / args.dataset / args.checkpoint
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     print(f"Loaded checkpoint: {ckpt_path.resolve()}")
@@ -64,6 +75,7 @@ def main():
             query = query.unsqueeze(0)
 
         torch.manual_seed(0)
+        sync()
         t0 = time.perf_counter()
         out1 = model.generate(
             query,
@@ -73,9 +85,11 @@ def main():
             top_p=args.top_p,
             use_cache=False,
         )  # without kv cache
+        sync()
         t1 = time.perf_counter()
 
         torch.manual_seed(0)
+        sync()
         t2 = time.perf_counter()
         out2 = model.generate(
             query,
@@ -85,6 +99,7 @@ def main():
             top_p=args.top_p,
             use_cache=True,
         )  # with kv cache
+        sync()
         t3 = time.perf_counter()
 
         result1 = tokenizer.decode(out1[0].tolist(), errors='replace')
