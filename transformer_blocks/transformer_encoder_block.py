@@ -36,7 +36,7 @@ class TransformerEncoderBlock(nn.Module):
         residual = x
         x = self.norm1(x)
         # attention_output shape: (B, S, E)
-        attention_output, _ = self.attention(query=x, mask=attention_mask)
+        attention_output, _, _ = self.attention(query=x, mask=attention_mask)
         x = residual + self.dropout(attention_output)
         x = self.norm2(x)
         residual = x

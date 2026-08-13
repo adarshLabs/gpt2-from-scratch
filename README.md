@@ -263,10 +263,6 @@ PYTHONPATH=. python -m pytest
 
 The suite covers padding masks, custom multi-head attention parity against PyTorch, transformer-block shape and pipeline checks, generation beyond the context window, and training CLI parsing.
 
-### Current Test Status
-
-At the current revision, the GPT generation, padding-mask, and training-CLI tests pass, while six reference attention/block tests expose a return-signature migration issue: `MultiHeadAttention.forward()` returns `(output, attention_weights, kv_cache)`, but those callers still unpack two values. This should be resolved before treating the repository as fully validated; it is documented here so the README does not imply a clean test run that the code does not currently deliver.
-
 ## Project Scope and Limitations
 
 - The project is optimized for clarity and experimentation, not for reproducing pretrained GPT-2 quality or production inference performance.
@@ -276,7 +272,7 @@ At the current revision, the GPT generation, padding-mask, and training-CLI test
 
 ## Contributing
 
-Contributions are welcome. Please keep changes focused, add or update tests where appropriate, and include the relevant test command and result in your pull request. The current known test-status note above is a useful baseline when validating changes to the shared attention API.
+Contributions are welcome. Please keep changes focused, add or update tests where appropriate, and include the relevant test command and result in your pull request.
 
 ## License
 

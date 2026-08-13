@@ -73,7 +73,7 @@ def test_transformer_decoder_pipeline_forward_and_backward():
     # self_attention_mask shape: (batch_size, 1, target_seq_len, target_seq_len)
     # cross_attention_mask shape: (batch_size, 1, 1, source_seq_len)
 
-    _, self_attention_weights = decoder_block.self_attention(
+    _, self_attention_weights, _ = decoder_block.self_attention(
         query=decoder_block.norm1(target_x),
         mask=self_attention_mask,
     )
@@ -87,7 +87,7 @@ def test_transformer_decoder_pipeline_forward_and_backward():
     assert torch.all(self_attention_weights[:, :, :, :].triu(1) == 0)
     assert torch.all(self_attention_weights[0, :, :, 3:] == 0)
 
-    _, cross_attention_weights = decoder_block.cross_attention(
+    _, cross_attention_weights, _ = decoder_block.cross_attention(
         query=decoder_block.norm2(target_x),
         key=encoder_output,
         value=encoder_output,

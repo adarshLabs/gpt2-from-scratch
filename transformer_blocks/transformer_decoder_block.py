@@ -47,13 +47,13 @@ class TransformerDecoderBlock(nn.Module):
         residual = x
         x = self.norm1(x)
         # attention_output shape: (B, S_tgt, E)
-        attention_output, _ = self.self_attention(query=x, mask=self_attention_mask)
+        attention_output, _, _ = self.self_attention(query=x, mask=self_attention_mask)
         x = residual + self.dropout(attention_output)
 
         # Cross Attention
         residual = x
         x = self.norm2(x)
-        cross_attention_output, _ = self.cross_attention(
+        cross_attention_output, _, _ = self.cross_attention(
             query=x,
             key=encoder_output,
             value=encoder_output,
