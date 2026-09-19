@@ -2,13 +2,8 @@ import torch
 import tiktoken
 import time
 import pickle
-import sys
 from pathlib import Path
 import argparse
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from transformer_models.gpt2 import GPT2, GPT2Config
 
