@@ -21,6 +21,7 @@ It is built for reading, experimenting, and modifying. Alongside the language-mo
 | Generation | Temperature, top-k, and top-p sampling; optional KV caching for incremental decoding |
 | Training | GPT-2 BPE tokenization, memory-mapped token files, AdamW, cosine learning-rate decay, warmup, gradient clipping, TensorBoard, and checkpoints |
 | Learning modules | Independent encoder and encoder-decoder transformer components with focused tests |
+| LoRA | Rank-8, alpha-16 low-rank adapters on the `q_proj`/`v_proj` projections; 294,912 of 123,998,545 parameters trainable (0.24%), with the wrapped model numerically identical to the base checkpoint before any training |
 
 ## Architecture
 
