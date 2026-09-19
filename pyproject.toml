@@ -23,3 +23,13 @@ dependencies = [
 [project.urls]
 homepage = "https://github.com/"
 repository = "https://github.com/"
+
+[tool.setuptools]
+packages = [
+  "attention",
+  "lora",
+  "positional_encoding",
+  "tokenizer",
+  "transformer_blocks",
+  "transformer_models",
+]
