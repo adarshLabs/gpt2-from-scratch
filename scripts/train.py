@@ -2,6 +2,7 @@ import argparse
 import math
 import os
 import pickle
+import sys
 from pathlib import Path
 import time
 
@@ -10,6 +11,10 @@ import numpy as np
 import torch
 import tiktoken
 from torch.utils.tensorboard import SummaryWriter
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from transformer_models.gpt2 import GPT2, GPT2Config
 
