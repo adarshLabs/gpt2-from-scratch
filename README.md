@@ -23,6 +23,27 @@ It is built for reading, experimenting, and modifying. Alongside the language-mo
 | Learning modules | Independent encoder and encoder-decoder transformer components with focused tests |
 | LoRA | Rank-8, alpha-16 low-rank adapters on the `q_proj`/`v_proj` projections; 294,912 of 123,998,545 parameters trainable (0.24%), with the wrapped model numerically identical to the base checkpoint before any training |
 
+## Results
+
+**Pretraining — TinyStories, 124M**
+
+| | |
+|---|---|
+| Config | 12 layers · 12 heads · d_model 768 · context 256 |
+| Parameters | 123,703,633 (with weight tying) |
+| Training | Kaggle T4, ~5 hours, 10,000 steps x batch 24 (~61M tokens) |
+| Validation loss | **1.5647** (perplexity **4.78**) |
+
+**KV cache** — same code, measured on both devices:
+
+| Device | Speedup |
+|---|---|
+| NVIDIA T4 | 1.27x at 200 tokens, rising to **1.64x** at 2,000 |
+| Apple Silicon (MPS) | **5.7x** |
+
+The cache removes roughly 240x of attention arithmetic and buys 1.64x of wall
+clock on the T4 — the time was never dominated by the arithmetic.
+
 ## Architecture
 
 The primary model lives in [`transformer_models/gpt2.py`](transformer_models/gpt2.py):
@@ -55,6 +76,9 @@ scripts/
   preprocess.py                    # creates tokenized train/validation files
   train.py                         # trains and checkpoints the GPT-style model
   generate.py                      # samples from a checkpoint and compares KV caching
+  train_lora.py                    # LoRA fine-tuning from a base checkpoint
+  lora_demo.py                     # identity-at-init check
+lora/lora_layer.py                 # LoRA adapter and replace_linear_with_lora
 tokenizer/character_tokenizer.py   # minimal character-tokenizer reference
 data/raw/tiny_shakespeare.txt      # bundled sample corpus
 tests/                             # generation and CLI coverage
@@ -150,6 +174,39 @@ python scripts/generate.py \
 ```
 
 The generation script samples once without a cache and once with KV caching, then prints both outputs and their relative timings. It uses the same random seed for both paths.
+
+## LoRA Fine-Tuning
+
+Rank-8 low-rank adapters on the `q_proj` and `v_proj` projections of all 12
+blocks, implemented by hand in [`lora/lora_layer.py`](lora/lora_layer.py) — no PEFT, no HuggingFace.
+`B` is zero-initialised, so before any gradient step the wrapped model is
+bit-identical to the base checkpoint (verified: max absolute logit difference
+0.0, `torch.equal` True).
+
+Adapt the TinyStories-pretrained model to a new corpus:
+
+```bash
+python scripts/train_lora.py \
+  --checkpoint checkpoint/tiny_stories/best.pt \
+  --dataset tiny_shakespeare \
+  --lora_r 8 \
+  --lora_alpha 16 \
+  --max_steps 500 \
+  --batch_size 8 \
+  --block_size 256 \
+  --max_lr 5e-4 --min_lr 5e-5 --warmup_steps 50
+```
+
+Check the identity-at-init property directly with `python scripts/lora_demo.py --checkpoint checkpoint/tiny_stories/best.pt`.
+
+**Result** — 24 wrapped layers, **294,912 of 123,998,545 parameters trainable (0.24%)**,
+500 steps (~3.4 epochs over 301,967 tokens), **19.9 minutes on a MacBook Air (MPS)**:
+
+| | Loss | Perplexity |
+|---|---|---|
+| Base model on Shakespeare val | 7.135 ± 0.011 | ~1255 |
+| After LoRA | **5.675 ± 0.007** | **~291** |
+| Change | −1.460 | **4.31x reduction** |
 
 ## Datasets
 

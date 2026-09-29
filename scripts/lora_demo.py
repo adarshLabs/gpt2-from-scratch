@@ -1,11 +1,19 @@
+import argparse
+
 import torch
 
 from transformer_models.gpt2 import GPT2, GPT2Config
 from lora.lora_layer import replace_linear_with_lora
+from scripts.train import get_device
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--checkpoint", type=str, default="checkpoint/tiny_stories/best.pt")
+args = parser.parse_args()
+
 config = GPT2Config()
 
-device = torch.device('mps')
-ckpt_path = '/Users/tiwariadarsh/Desktop/Project/gpt2-from-scratch/checkpoint/tiny_stories/best.pt'
+device = get_device()
+ckpt_path = args.checkpoint
 ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
 config.__dict__.update(ckpt['config'])
 

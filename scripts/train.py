@@ -232,17 +232,21 @@ def train(model, train_data, val_data, tokenizer, device, args, config):
     writer.close()
 
 
+def get_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def main():
     args = parse_args()
     torch.manual_seed(1337)
     np.random.seed(1337)
-    if torch.cuda.is_available():
+    device = get_device()
+    if device.type == "cuda":
         torch.cuda.manual_seed_all(1337)
-        device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
 
     print(f"Using device: {device}")
 
