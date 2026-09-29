@@ -6,13 +6,15 @@ import torch
 
 from transformer_models.gpt2 import GPT2, GPT2Config
 from lora.lora_layer import replace_linear_with_lora
-from scripts.train import load_data, validation, train, parse_args
+from scripts.train import load_data, validation, train, get_device
 import tiktoken
 from pathlib import Path
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    # Cross-dataset by design: adapt a TinyStories-pretrained base to Tiny Shakespeare.
+    parser.add_argument("--checkpoint", type=str, default="checkpoint/tiny_stories/best.pt")
     parser.add_argument("--max_steps",     type=int,   default=500)    
     parser.add_argument("--max_lr",        type=float, default=5e-4)   
     parser.add_argument("--min_lr",        type=float, default=5e-5)   
@@ -36,18 +38,17 @@ def parse_args():
 
 def main():
 
+    args = parse_args()
     config = GPT2Config()
 
-    device = torch.device('mps')
-    ckpt_path = '/Users/tiwariadarsh/Desktop/Project/gpt2-from-scratch/checkpoint/tiny_stories/best.pt'
+    device = get_device()
+    print(f"Using device: {device}")
+    ckpt_path = args.checkpoint
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     config.__dict__.update(ckpt['config'])
 
     model = GPT2(config).to(device)
     model.load_state_dict(ckpt['model'])
-    device = torch.device('mps')
-
-    args = parse_args()
 
     path = Path("data/processed")
     train_data, val_data, meta = load_data(path / args.dataset)
