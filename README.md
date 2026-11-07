@@ -210,7 +210,16 @@ Check the identity-at-init property directly with `python scripts/lora_demo.py -
 | After LoRA | **5.554** | **~258** |
 | Change | −1.59 (about 140x the baseline noise) | **4.9x reduction** |
 
-83% of the drop happens by step 100 and 97% by step 300, with no sign of overfitting. The improvement is one run, not a seed sweep. Samples pick up the play format (speaker labels, colons, blank lines) while the sentences stay incoherent: the format transferred, the content mostly did not.
+83% of the drop happens by step 100 and 97% by step 300, with no sign of overfitting. The improvement is one run, not a seed sweep. Samples pick up the play format (speaker labels, colons, blank lines) while the sentences stay incoherent: the format transferred and the content started to.
+
+**Where the drop comes from** (`scripts/split_loss.py`, every validation block, 35,840 tokens; overall 7.129 → 5.537):
+
+| Token type | Share of tokens | Loss before → after | Share of total drop |
+|---|---|---|---|
+| Structure (newlines, colons, speaker-label lines) | 25.4% | 6.604 → 3.879 | 43.5% |
+| Content (everything else) | 74.6% | 7.308 → 6.101 | 56.5% |
+
+Structure tokens are learned fastest, but most of the improvement is on content tokens. Single run; a different structure rule would shift the percentages.
 
 ## Datasets
 
