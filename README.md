@@ -197,16 +197,20 @@ python scripts/train_lora.py \
   --max_lr 5e-4 --min_lr 5e-5 --warmup_steps 50
 ```
 
+Scaling follows the LoRA paper: the adapter output is multiplied by `alpha / r` (2.0 here).
+
 Check the identity-at-init property directly with `python scripts/lora_demo.py --checkpoint checkpoint/tiny_stories/best.pt`.
 
-**Result** — 24 wrapped layers, **294,912 of 123,998,545 parameters trainable (0.24%)**,
-500 steps (~3.4 epochs over 301,967 tokens), **19.9 minutes on a MacBook Air (MPS)**:
+**Result** (single run on a Kaggle T4, `alpha / r` scaling) — 24 wrapped layers, **294,912 of 123,998,545 parameters trainable (0.24%)**,
+500 steps (~3.4 epochs over 301,967 tokens), **about 4.8 minutes**:
 
 | | Loss | Perplexity |
 |---|---|---|
-| Base model on Shakespeare val | 7.135 ± 0.011 | ~1255 |
-| After LoRA | **5.675 ± 0.007** | **~291** |
-| Change | −1.460 | **4.31x reduction** |
+| Base model on Shakespeare val | 7.142 (4 baseline draws, std 0.011) | ~1264 |
+| After LoRA | **5.554** | **~258** |
+| Change | −1.59 (about 140x the baseline noise) | **4.9x reduction** |
+
+83% of the drop happens by step 100 and 97% by step 300, with no sign of overfitting. The improvement is one run, not a seed sweep. Samples pick up the play format (speaker labels, colons, blank lines) while the sentences stay incoherent: the format transferred, the content mostly did not.
 
 ## Datasets
 

@@ -9,7 +9,7 @@ class LoraLayer(nn.Module):
 
         self.A = nn.Parameter(torch.randn(r, linear.in_features, device=linear.weight.device, dtype=linear.weight.dtype) * 0.01)
         self.B = nn.Parameter(torch.zeros(linear.out_features, r, device=linear.weight.device, dtype=linear.weight.dtype))
-        self.scale = r/alpha
+        self.scale = alpha / r
 
     def forward(self, x):
         original = self.linear(x)
@@ -29,7 +29,7 @@ def replace_linear_with_lora(model, target_substrings, r, alpha):
             for part in parts[:-1]:
                 parent = getattr(parent, part)
 
-            setattr(parent, parts[-1], LoraLayer(module, r = 8, alpha = 16))
+            setattr(parent, parts[-1], LoraLayer(module, r=r, alpha=alpha))
             replaced.append(name)
 
     return replaced

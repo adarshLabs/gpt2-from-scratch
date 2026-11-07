@@ -33,3 +33,7 @@ packages = [
   "transformer_blocks",
   "transformer_models",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests", "lora/tests"]
